@@ -20,7 +20,26 @@ pub struct User {
 pub trait Repository {
     async fn create(&self, user: &User) -> Result<(), Error>;
 
-    async fn find_by_id(&self, user_id: &str) -> Result<User, Error>;
+    async fn find_by_id(&self, user_id: &str) -> Result<Option<User>, Error>;
+
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, Error>;
 
     async fn exists_by_email(&self, email: &str) -> Result<bool, Error>;
+}
+
+pub trait Service {
+    async fn get_by_id(&self, user_id: &str) -> Result<UserResponse, Error>;
+
+    async fn get_current(&self) -> Result<UserResponse, Error>;
+}
+
+#[derive(FromRow, Serialize)]
+pub struct UserResponse {
+    pub id: String,
+    pub email: String,
+    pub name: String,
+    pub phone_number: Option<String>,
+    pub photo_url: Option<String>,
+    pub created_at: DateTime<Local>,
+    pub updated_at: DateTime<Local>,
 }

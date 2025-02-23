@@ -19,8 +19,10 @@ impl Repository {
 impl model::user::Repository for Repository {
     async fn create(&self, user: &User) -> Result<(), Error> {
         let sql = r#"
-            INSERT INTO user (id, email, password, name, phone_number, photo_url, created_at, updated_at)
-            VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO
+                user (id, email, password, name, phone_number, photo_url, created_at, updated_at)
+            VALUES
+                (UUID_TO_BIN(?), ?, ?, ?, ?, ?, ?, ?)
         "#;
 
         let query = sqlx::query(sql)
@@ -36,33 +38,47 @@ impl model::user::Repository for Repository {
         Ok(uow::execute(query, &*self.pool).await?)
     }
 
-    async fn find_by_id(&self, user_id: &str) -> Result<User, Error> {
+    async fn find_by_id(&self, user_id: &str) -> Result<Option<User>, Error> {
         let sql = r#"
-            SELECT BIN_TO_UUID(id) as id, email, password, name, phone_number, photo_url, created_at, updated_at, deleted_at
-            FROM user
-            WHERE id = UUID_TO_BIN(?)
+            SELECT
+                BIN_TO_UUID(id) as id, email, password, name, phone_number, photo_url, created_at,
+                updated_at, deleted_at
+            FROM
+                user
+            WHERE
+                id = UUID_TO_BIN(?)
         "#;
 
         let query = sqlx::query_as::<_, User>(sql).bind(user_id);
+        let user = uow::fetch_one_as(query, &*self.pool).await?;
 
-        let row = query
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|err| Error::NotFound(format!("User not found: {}", err)))?;
+        Ok(user)
+    }
 
-        Ok(row)
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, Error> {
+        let sql = r#"
+            SELECT
+                BIN_TO_UUID(id) as id, email, password, name, phone_number, photo_url, created_at,
+                updated_at, deleted_at
+            FROM
+                user
+            WHERE
+                email = ?
+        "#;
+
+        let query = sqlx::query_as::<_, User>(sql).bind(email);
+        let user = uow::fetch_one_as(query, &*self.pool).await?;
+
+        Ok(user)
     }
 
     async fn exists_by_email(&self, email: &str) -> Result<bool, Error> {
-        let query = r#"
+        let sql = r#"
             SELECT EXISTS(SELECT 1 FROM user WHERE email = ?)
         "#;
 
-        let (exists): (bool,) = sqlx::query_as(query)
-            .bind(email)
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|err| Error::Internal(err.to_string()))?;
+        let query = sqlx::query_as(sql).bind(email);
+        let exists: (bool,) = uow::fetch_one(query, &*self.pool).await?;
 
         Ok(exists.0)
     }

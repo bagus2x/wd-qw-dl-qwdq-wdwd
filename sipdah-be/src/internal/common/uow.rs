@@ -1,6 +1,5 @@
 use crate::internal::model::error::Error;
-use crate::internal::model::user::User;
-use sqlx::mysql::MySqlArguments;
+use sqlx::mysql::{MySqlArguments, MySqlRow};
 use sqlx::query::{Query, QueryAs};
 use sqlx::{MySql, MySqlPool, Pool, Transaction};
 use std::cell::RefCell;
@@ -8,12 +7,10 @@ use std::future::Future;
 use std::sync::Arc;
 use tokio::task_local;
 
-// Task-local storage now holds a reference
 task_local! {
     pub static CURRENT_TRANSACTION: RefCell<Option<&'static mut Transaction<'static, MySql>>>;
 }
 
-// Transaction manager that uses task-local storage
 pub struct TransactionManager {
     pool: Arc<MySqlPool>,
 }
@@ -64,7 +61,6 @@ impl Uow for TransactionManager {
     }
 }
 
-// Helper function to get current transaction
 pub fn get_transaction() -> Result<&'static mut Transaction<'static, MySql>, Error> {
     CURRENT_TRANSACTION
         .try_with(|tx| {
@@ -77,15 +73,17 @@ pub fn get_transaction() -> Result<&'static mut Transaction<'static, MySql>, Err
 
 #[macro_export]
 macro_rules! with_transaction {
-    ($tx:expr, $body:expr) => {
-        $body;
+    ($tx:expr, $body:expr) => {{
+        let result = $body;
 
         CURRENT_TRANSACTION
             .try_with(|tx1| {
                 *tx1.borrow_mut() = Some($tx);
             })
             .map_err(|err| Error::Internal(err.to_string()))?;
-    };
+
+        result
+    }};
 }
 
 pub async fn execute(
@@ -114,28 +112,50 @@ pub async fn execute(
     Ok(())
 }
 
-pub async fn fetch_one_as(
-    query: QueryAs<'_, MySql, User, MySqlArguments>,
+pub async fn fetch_one_as<T>(
+    query: QueryAs<'_, MySql, T, MySqlArguments>,
     pool: &Pool<MySql>,
-) -> Result<Option<User>, Error> {
+) -> Result<Option<T>, Error>
+where
+    T: Send + Unpin + for<'r> sqlx::FromRow<'r, MySqlRow>,
+{
+    let tx = get_transaction();
+
+    let result = match tx {
+        Ok(tx) => with_transaction!(tx, {
+            query
+                .fetch_optional(&mut **tx)
+                .await
+                .map_err(|err| Error::Internal(err.to_string()))
+        }),
+        Err(_) => query
+            .fetch_optional(pool)
+            .await
+            .map_err(|err| Error::Internal(err.to_string())),
+    };
+
+    result
+}
+
+pub async fn fetch_one<T>(
+    query: QueryAs<'_, MySql, T, MySqlArguments>,
+    pool: &Pool<MySql>,
+) -> Result<T, Error>
+where
+    T: Send + Unpin + for<'r> sqlx::FromRow<'r, MySqlRow>,
+{
     let tx = get_transaction();
 
     match tx {
-        Ok(tx) => {
-            with_transaction!(tx, {
-                query
-                    .fetch_one(&mut **tx)
-                    .await
-                    .map_err(|err| Error::Internal(err.to_string()))?
-            });
-        }
-        Err(_) => {
+        Ok(tx) => with_transaction!(tx, {
             query
-                .fetch_one(pool)
+                .fetch_one(&mut **tx)
                 .await
-                .map_err(|err| Error::Internal(err.to_string()))?;
-        }
-    };
-
-    Ok(None)
+                .map_err(|err| Error::Internal(err.to_string()))
+        }),
+        Err(_) => query
+            .fetch_one(pool)
+            .await
+            .map_err(|err| Error::Internal(err.to_string())),
+    }
 }

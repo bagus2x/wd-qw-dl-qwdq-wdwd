@@ -17,3 +17,4 @@ serde = { version = "1.0.215", features = ["derive"] }
 jsonwebtoken = "9.3.1"
 axum = { version = "0.8.1", features = ["ws", "macros", "multipart"] }
 tower = "0.5.1"
+uow_macro = { path = "./uow_macro" }

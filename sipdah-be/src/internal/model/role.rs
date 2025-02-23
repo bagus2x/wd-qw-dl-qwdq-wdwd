@@ -16,9 +16,9 @@ pub struct Role {
 pub trait Repository {
     async fn create(&self, user: &Role) -> Result<(), Error>;
 
-    async fn find_by_id(&self, user_id: &str) -> Result<Role, Error>;
+    async fn find_by_id(&self, user_id: &str) -> Result<Option<Role>, Error>;
 
-    async fn find_by_name(&self, name: &str) -> Result<Role, Error>;
+    async fn find_by_name(&self, name: &str) -> Result<Option<Role>, Error>;
 
     async fn exists_by_name(&self, name: &str) -> Result<bool, Error>;
 

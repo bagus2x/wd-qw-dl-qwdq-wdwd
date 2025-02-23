@@ -6,6 +6,8 @@ pub trait Service {
     async fn sign_in(&self, req: &SignInRequest) -> Result<AuthResponse, Error>;
 
     async fn sign_up(&self, req: &SignUpRequest) -> Result<AuthResponse, Error>;
+
+    fn verify_token(&self, token: &str) -> Result<Claim, Error>;
 }
 
 #[derive(Validate, Serialize, Deserialize)]
@@ -65,5 +67,5 @@ pub struct Claim {
     pub(crate) sub: String,
     pub(crate) exp: i64,
     pub(crate) iat: i64,
-    pub(crate) username: String,
+    pub(crate) email: String,
 }

@@ -1,4 +1,4 @@
-use crate::internal::common::uow::{get_transaction, CURRENT_TRANSACTION};
+use crate::internal::common::uow;
 use crate::internal::model;
 use crate::internal::model::error::Error;
 use crate::internal::model::role::Role;
@@ -18,96 +18,73 @@ impl Repository {
 
 impl model::role::Repository for Repository {
     async fn create(&self, role: &Role) -> Result<(), Error> {
-        let query = r#"
-            INSERT INTO role (id, name, created_at, updated_at)
-            VALUES (UUID_TO_BIN(?), ?, ?, ?)
+        let sql = r#"
+            INSERT INTO 
+                role (id, name, created_at, updated_at)
+            VALUES 
+                (UUID_TO_BIN(?), ?, ?, ?)
         "#;
 
-        let tx = get_transaction()?;
-
-        sqlx::query(query)
+        let query = sqlx::query(sql)
             .bind(&role.id)
             .bind(&role.name)
             .bind(role.created_at)
-            .bind(role.updated_at)
-            .execute(&mut **tx)
-            .await
-            .map_err(|err| Error::Internal(err.to_string()))?;
+            .bind(role.updated_at);
 
-        CURRENT_TRANSACTION
-            .try_with(|tx1| *tx1.borrow_mut() = Some(tx))
-            .map_err(|err| Error::Internal(err.to_string()))?;
-
-        Ok(())
+        Ok(uow::execute(query, &*self.pool).await?)
     }
 
-    async fn find_by_id(&self, role_id: &str) -> Result<Role, Error> {
-        let query = r#"
-            SELECT BIN_TO_UUID(id) as id, name, created_at, updated_at, deleted_at
-            FROM role
-            WHERE id = UUID_TO_BIN(?)
+    async fn find_by_id(&self, role_id: &str) -> Result<Option<Role>, Error> {
+        let sql = r#"
+            SELECT 
+                BIN_TO_UUID(id) as id, name, created_at, updated_at, deleted_at
+            FROM 
+                role
+            WHERE 
+                id = UUID_TO_BIN(?)
         "#;
 
-        let row = sqlx::query_as::<_, Role>(query)
-            .bind(role_id)
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|err| Error::NotFound(format!("Role not found: {}", err)))?;
+        let query = sqlx::query_as::<_, Role>(sql).bind(role_id);
+        let role = uow::fetch_one_as(query, &*self.pool).await?;
 
-        Ok(row)
+        Ok(role)
     }
 
-    async fn find_by_name(&self, name: &str) -> Result<Role, Error> {
-        let query = r#"
-            SELECT BIN_TO_UUID(id) as id, name, created_at, updated_at, deleted_at
-            FROM role
-            WHERE name = ?
+    async fn find_by_name(&self, name: &str) -> Result<Option<Role>, Error> {
+        let sql = r#"
+            SELECT 
+                BIN_TO_UUID(id) as id, name, created_at, updated_at, deleted_at
+            FROM 
+                role
+            WHERE 
+                name = ?
         "#;
 
-        let row = sqlx::query_as::<_, Role>(query)
-            .bind(name)
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|err| Error::NotFound(format!("Role not found: {}", err)))?;
+        let query = sqlx::query_as::<_, Role>(sql).bind(name);
+        let role = uow::fetch_one_as(query, &*self.pool).await?;
 
-        Ok(row)
+        Ok(role)
     }
 
     async fn exists_by_name(&self, name: &str) -> Result<bool, Error> {
-        let query = r#"
+        let sql = r#"
             SELECT EXISTS(SELECT 1 FROM role WHERE name = ?)
         "#;
 
-        let exists: (bool,) = sqlx::query_as(query)
-            .bind(name)
-            .fetch_one(&*self.pool)
-            .await
-            .map_err(|err| Error::Internal(err.to_string()))?;
+        let query = sqlx::query_as(sql).bind(name);
+        let exists: (bool,) = uow::fetch_one(query, &*self.pool).await?;
 
         Ok(exists.0)
     }
 
     async fn add(&self, user_id: &str, role_id: &str) -> Result<(), Error> {
-        let query = r#"
+        let sql = r#"
             INSERT INTO user_role (user_id, role_id)
             VALUES (UUID_TO_BIN(?), UUID_TO_BIN(?))
         "#;
 
-        let tx = get_transaction()?;
+        let query = sqlx::query(sql).bind(user_id).bind(role_id);
 
-        sqlx::query(query)
-            .bind(user_id)
-            .bind(role_id)
-            .execute(&mut **tx)
-            .await
-            .map_err(|err| Error::Internal(err.to_string()))?;
-
-        CURRENT_TRANSACTION
-            .try_with(|tx1| {
-                *tx1.borrow_mut() = Some(tx);
-            })
-            .map_err(|err| Error::Internal(err.to_string()))?;
-
-        Ok(())
+        Ok(uow::execute(query, &*self.pool).await?)
     }
 }
