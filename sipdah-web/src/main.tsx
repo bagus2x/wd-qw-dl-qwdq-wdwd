@@ -1,12 +1,12 @@
+import { RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import { Button } from '@/components/ui/button'
+
+import { router } from '@/router-config'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <div>
-      <Button>Hello</Button>
-    </div>
+    <RouterProvider router={router} />
   </StrictMode>
 )

@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::db::mysql::MysqlDatabase;
+use crate::db::mysql::Database;
 use crate::internal::common::uow;
 use crate::internal::router::auth::{sign_in, sign_up, AuthState};
 use crate::internal::router::user::{get_by_id, get_current, UserState};
@@ -26,7 +26,7 @@ async fn main() {
         .init();
 
     let config = Arc::new(Config::new());
-    let db = match MysqlDatabase::new(Arc::clone(&config)).await {
+    let db = match Database::new(Arc::clone(&config)).await {
         Ok(db) => Arc::new(db.pool),
         Err(err) => {
             error!(error = %err, "Failed to initialize database");

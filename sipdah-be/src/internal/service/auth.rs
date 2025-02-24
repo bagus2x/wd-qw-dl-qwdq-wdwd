@@ -188,7 +188,7 @@ where
             &DecodingKey::from_secret(self.config.access_token_key_secret.as_ref()),
             &Validation::new(Algorithm::HS256),
         )
-        .map_err(|error| Error::UnAuthorized(error.to_string()))?;
+        .map_err(|error| Error::Unauthorized(error.to_string()))?;
 
         Ok(data.claims)
     }

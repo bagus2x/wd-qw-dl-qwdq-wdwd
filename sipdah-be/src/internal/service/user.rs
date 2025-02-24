@@ -1,11 +1,10 @@
-use crate::config::Config;
 use crate::internal::common::uow::Uow;
 use crate::internal::model::error::Error;
+use crate::internal::model::identity::get_current_identity;
 use crate::internal::model::role::Repository as RoleRepository;
 use crate::internal::model::user::{
     Repository as UserRepository, Service as UserService, UserResponse,
 };
-use crate::internal::service::USER_ID;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -61,7 +60,7 @@ where
     }
 
     async fn get_current(&self) -> Result<UserResponse, Error> {
-        let (user_id, _) = USER_ID.get();
-        self.get_by_id(&user_id).await
+        let identity = get_current_identity()?;
+        self.get_by_id(&identity.user_id).await
     }
 }

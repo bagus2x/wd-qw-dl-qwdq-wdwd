@@ -1,8 +1,7 @@
-use tokio::task_local;
-
 pub mod auth;
+pub mod project;
+pub mod project_forum;
+pub mod project_history;
+pub mod project_kanban;
+pub mod project_message;
 pub mod user;
-
-task_local! {
-    pub static USER_ID: (String, String) // (id, email)
-}

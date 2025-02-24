@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 pub enum Error {
     BadRequest(String),
     NotFound(String),
-    UnAuthorized(String),
+    Unauthorized(String),
     Forbidden(String),
     Conflict(String),
     Internal(String),
