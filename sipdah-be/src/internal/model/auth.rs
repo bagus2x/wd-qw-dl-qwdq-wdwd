@@ -7,10 +7,17 @@ pub trait Service {
 
     async fn sign_up(&self, req: &SignUpRequest) -> Result<AuthResponse, Error>;
 
-    fn verify_token(&self, token: &str) -> Result<Claim, Error>;
+    async fn sign_out(&self) -> Result<(), Error>;
+
+    async fn refresh(&self, req: &RefreshTokenRequest) -> Result<AuthResponse, Error>;
+
+    fn verify_access_token(&self, token: &str) -> Result<Claim, Error>;
+
+    fn verify_refresh_token(&self, token: &str) -> Result<Claim, Error>;
 }
 
 #[derive(Validate, Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct SignInRequest {
     #[validate(
         email(message = "Invalid email format. Please provide a valid email address."),
@@ -30,6 +37,7 @@ pub struct SignInRequest {
 }
 
 #[derive(Validate, Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct SignUpRequest {
     #[validate(length(
         min = 1,
@@ -54,7 +62,15 @@ pub struct SignUpRequest {
     pub password: String,
 }
 
+#[derive(Validate, Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
+pub struct RefreshTokenRequest {
+    #[validate(length(min = 1, message = "Token is required"))]
+    pub refresh_token: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct AuthResponse {
     pub user_id: String,
     pub email: String,
@@ -63,6 +79,7 @@ pub struct AuthResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct Claim {
     pub(crate) sub: String,
     pub(crate) exp: i64,

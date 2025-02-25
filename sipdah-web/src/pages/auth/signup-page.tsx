@@ -1,3 +1,4 @@
+import { SignUpForm } from '@/pages/auth/components/signup-form'
 import { createLazyRoute, HeadContent } from '@tanstack/react-router'
 
 export const signUpLazyRoute = createLazyRoute('/signup')({
@@ -10,5 +11,9 @@ export const signUpLazyRoute = createLazyRoute('/signup')({
 })
 
 export function SignUpPage() {
-  return <main>Hello Sign Up</main>
+  return (
+    <main className='mx-auto p-4 w-full flex justify-center'>
+      <SignUpForm className='max-w-96 w-full' />
+    </main>
+  )
 }

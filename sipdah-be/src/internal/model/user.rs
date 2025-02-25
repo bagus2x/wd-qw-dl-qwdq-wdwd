@@ -34,6 +34,7 @@ pub trait Service {
 }
 
 #[derive(FromRow, Serialize)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct UserResponse {
     pub id: String,
     pub email: String,

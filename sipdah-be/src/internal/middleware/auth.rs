@@ -5,38 +5,36 @@ use crate::internal::model::identity::{Identity, IDENTITY};
 use crate::internal::router::auth::AuthState;
 use axum::extract::State;
 use axum::response::IntoResponse;
-use axum::{
-    extract::Request,
-    http::{header, StatusCode},
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
+use axum_extra::extract::CookieJar;
+use axum_extra::headers::authorization::Bearer;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 use internal::model::auth;
 use response::json_error;
 use std::sync::Arc;
 
 pub async fn auth<T1: auth::Service>(
     State(state): State<Arc<AuthState<T1>>>,
+    bearer: Option<TypedHeader<Authorization<Bearer>>>,
+    jar: CookieJar,
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    let auth_header = req
-        .headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|header| header.to_str().ok());
+    let token = bearer
+        .as_ref()
+        .map(|b| b.token().to_string())
+        .or_else(|| jar.get("access_token").map(|c| c.value().to_string()));
 
-    if auth_header.is_none() {
-        let error = Error::Unauthorized("Token is not found".to_string());
-        return Ok(json_error::<String>(error).into_response());
-    }
+    let token = match token {
+        Some(t) => t,
+        None => {
+            let error = Error::BadRequest("Access token is not provided".to_string());
+            return Ok(json_error::<String>(error).into_response());
+        }
+    };
 
-    let token = auth_header.unwrap();
-    if token.len() < 7 {
-        let error = Error::Unauthorized("Token is incorrect".to_string());
-        return Ok(json_error::<String>(error).into_response());
-    }
-
-    match state.auth_service.verify_token(&token[7..]) {
+    match state.auth_service.verify_access_token(&token) {
         Ok(claim) => {
             let identity = Identity {
                 user_id: claim.sub,

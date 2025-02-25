@@ -1,2 +1,2 @@
 pub mod mysql;
-mod redis;
+pub mod redis;

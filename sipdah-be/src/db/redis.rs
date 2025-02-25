@@ -10,7 +10,7 @@ pub struct Database {
 
 impl Database {
     pub fn new(config: Arc<Config>) -> Result<Database, Error> {
-        let redis_config = RedisConfig::from_url(config.database_url.clone());
+        let redis_config = RedisConfig::from_url(config.cache_url.clone());
         let pool = redis_config
             .create_pool(Some(Runtime::Tokio1))
             .map_err(|err| Internal(err.to_string()))?;

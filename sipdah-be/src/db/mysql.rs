@@ -12,8 +12,8 @@ impl Database {
         let pool = MySqlPoolOptions::new()
             .max_connections(config.max_connections)
             .min_connections(config.min_connections)
-            .acquire_timeout(config.acquire_timeout)
-            .idle_timeout(config.idle_timeout)
+            .acquire_timeout(config.acquire_timeout.to_std().unwrap())
+            .idle_timeout(config.idle_timeout.to_std().unwrap())
             .connect(&config.database_url)
             .await?;
 

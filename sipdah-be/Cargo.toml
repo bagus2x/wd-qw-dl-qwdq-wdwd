@@ -18,6 +18,9 @@ jsonwebtoken = "9.3.1"
 axum = { version = "0.8.1", features = ["ws", "macros", "multipart"] }
 tower = "0.5.1"
 uow_macro = { path = "./uow_macro" }
-axum-extra = { version = "0.10.0", features = ["cookie"] }
+axum-extra = { version = "0.10.0", features = ["cookie", "typed-header"] }
 redis = "0.29.0"
 deadpool-redis = "0.19.0"
+tower-http = { version = "0.6.2", features = ["cors"] }
+cookie = {version = "0.18.1"}
+time = "0.3.37"

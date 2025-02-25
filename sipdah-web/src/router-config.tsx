@@ -1,5 +1,10 @@
+import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
 import { landingRoute } from '@/pages/landing/landing-page'
-import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from '@/lib/query'
 
 export const rootRoute = createRootRoute({
   head: () => {
@@ -11,6 +16,15 @@ export const rootRoute = createRootRoute({
       ],
     }
   },
+  component: () => (
+    <>
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <TanStackRouterDevtools />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </>
+  ),
 })
 
 const signInRoute = createRoute({
@@ -39,6 +53,7 @@ export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
+  defaultPendingMinMs: 0,
 })
 
 declare module '@tanstack/react-router' {

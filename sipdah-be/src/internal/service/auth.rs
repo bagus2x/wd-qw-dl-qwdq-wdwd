@@ -2,44 +2,90 @@ use crate::config::Config;
 use crate::internal::common::id;
 use crate::internal::common::uow::Uow;
 use crate::internal::model::auth::{
-    AuthResponse, Claim, Service as AuthService, SignInRequest, SignUpRequest,
+    AuthResponse, Claim, RefreshTokenRequest, Service as AuthService, SignInRequest, SignUpRequest,
 };
+use crate::internal::model::cache::Repository as CacheRepository;
 use crate::internal::model::error::Error;
 use crate::internal::model::role::{Repository as RoleRepository, ROLE_USER};
 use crate::internal::model::user::{Repository as UserRepository, User};
 use chrono::Local;
+use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use std::ops::Add;
 use std::sync::Arc;
 use uow_macro::uow;
 use validator::Validate;
+use crate::internal::model::identity::get_current_identity;
 
 #[derive(Clone)]
-pub struct Service<T1, T2, T3>
+pub struct Service<T1, T2, T3, T4>
 where
     T1: Uow,
     T2: UserRepository,
     T3: RoleRepository,
+    T4: CacheRepository,
 {
     config: Arc<Config>,
     uow: Arc<T1>,
     user_repo: Arc<T2>,
     role_repo: Arc<T3>,
+    cache_repo: Arc<T4>,
 }
 
-impl<T1, T2, T3> Service<T1, T2, T3>
+impl<T1, T2, T3, T4> Service<T1, T2, T3, T4>
 where
     T1: Uow,
     T2: UserRepository,
     T3: RoleRepository,
+    T4: CacheRepository,
 {
-    pub fn new(config: Arc<Config>, uow: Arc<T1>, user_repo: Arc<T2>, role_repo: Arc<T3>) -> Self {
+    pub fn new(
+        config: Arc<Config>,
+        uow: Arc<T1>,
+        user_repo: Arc<T2>,
+        role_repo: Arc<T3>,
+        cache_repo: Arc<T4>,
+    ) -> Self {
         Self {
             config,
             uow,
             user_repo,
             role_repo,
+            cache_repo,
         }
+    }
+
+    async fn issue_tokens(&self, user: &User) -> Result<AuthResponse, Error> {
+        let access_token = self.create_token(
+            self.config.access_token_key_secret.as_ref(),
+            &user.id,
+            &user.email,
+            chrono::Utc::now()
+                .add(self.config.access_token_key_ttl)
+                .timestamp(),
+            chrono::Utc::now().timestamp(),
+        )?;
+        let refresh_token = self.create_token(
+            self.config.refresh_token_key_secret.as_ref(),
+            &user.id,
+            &user.email,
+            chrono::Utc::now()
+                .add(self.config.refresh_token_key_ttl)
+                .timestamp(),
+            chrono::Utc::now().timestamp(),
+        )?;
+        let key = format!("auth:refresh-token:{}", user.id);
+
+        self.cache_repo
+            .setx(key, &refresh_token, self.config.refresh_token_key_ttl)
+            .await?;
+
+        Ok(AuthResponse {
+            user_id: user.id.clone(),
+            email: user.email.clone(),
+            refresh_token,
+            access_token,
+        })
     }
 
     fn create_token(
@@ -66,11 +112,12 @@ where
     }
 }
 
-impl<T1, T2, T3> AuthService for Service<T1, T2, T3>
+impl<T1, T2, T3, T4> AuthService for Service<T1, T2, T3, T4>
 where
     T1: Uow + Send + Sync,
     T2: UserRepository + Send + Sync,
     T3: RoleRepository + Send + Sync,
+    T4: CacheRepository + Send + Sync,
 {
     async fn sign_in(&self, req: &SignInRequest) -> Result<AuthResponse, Error> {
         req.validate()
@@ -90,31 +137,7 @@ where
             return Err(Error::BadRequest("Password doesn't match".to_string()));
         }
 
-        let access_token = self.create_token(
-            self.config.access_token_key_secret.as_ref(),
-            &user.id,
-            &user.email,
-            chrono::Utc::now()
-                .add(chrono::Duration::minutes(10))
-                .timestamp(),
-            chrono::Utc::now().timestamp(),
-        )?;
-        let refresh_token = self.create_token(
-            self.config.refresh_token_key_secret.as_ref(),
-            &user.id,
-            &user.email,
-            chrono::Utc::now()
-                .add(chrono::Duration::days(7))
-                .timestamp(),
-            chrono::Utc::now().timestamp(),
-        )?;
-
-        Ok(AuthResponse {
-            user_id: user.id,
-            email: user.email,
-            access_token,
-            refresh_token,
-        })
+        self.issue_tokens(&user).await
     }
 
     #[uow]
@@ -131,7 +154,7 @@ where
         }
 
         let password =
-            bcrypt::hash(&req.password, 12).map_err(|err| Error::Internal(err.to_string()))?;
+            bcrypt::hash(&req.password, 10).map_err(|err| Error::Internal(err.to_string()))?;
 
         let user = User {
             id: id::new(),
@@ -155,41 +178,76 @@ where
 
         self.role_repo.add(&user.id, &role.id).await?;
 
-        let access_token = self.create_token(
-            self.config.access_token_key_secret.as_ref(),
-            &user.id,
-            &user.email,
-            chrono::Utc::now()
-                .add(chrono::Duration::minutes(10))
-                .timestamp(),
-            chrono::Utc::now().timestamp(),
-        )?;
-        let refresh_token = self.create_token(
-            self.config.refresh_token_key_secret.as_ref(),
-            &user.id,
-            &user.email,
-            chrono::Utc::now()
-                .add(chrono::Duration::days(7))
-                .timestamp(),
-            chrono::Utc::now().timestamp(),
-        )?;
-
-        Ok(AuthResponse {
-            user_id: user.id,
-            email: user.email,
-            access_token,
-            refresh_token,
-        })
+        self.issue_tokens(&user).await
     }
 
-    fn verify_token(&self, token: &str) -> Result<Claim, Error> {
-        let data = jsonwebtoken::decode::<Claim>(
+    async fn sign_out(&self) -> Result<(), Error> {
+        let identity = get_current_identity()?;
+        let key = format!("auth:refresh-token:{}", identity.user_id);
+     
+        self.cache_repo.del(key).await
+    }
+
+    async fn refresh(&self, req: &RefreshTokenRequest) -> Result<AuthResponse, Error> {
+        req.validate()
+            .map_err(|err| Error::BadRequest(err.to_string()))?;
+
+        let claim = self.verify_refresh_token(&req.refresh_token)?;
+        let key = format!("auth:refresh-token:{}", claim.sub);
+
+        match self.cache_repo.get::<String>(key).await? {
+            Some(token) => {
+                if token != req.refresh_token {
+                    return Err(Error::BadRequest("Token doesn't match".to_string()));
+                }
+
+                let user = self
+                    .user_repo
+                    .find_by_id(&claim.sub)
+                    .await?
+                    .ok_or_else(|| Error::NotFound("User not found".to_string()))?;
+
+                self.issue_tokens(&user).await
+            }
+            None => Err(Error::NotFound("Token is not found".to_string())),
+        }
+    }
+
+    fn verify_access_token(&self, token: &str) -> Result<Claim, Error> {
+        match jsonwebtoken::decode::<Claim>(
             &token,
             &DecodingKey::from_secret(self.config.access_token_key_secret.as_ref()),
             &Validation::new(Algorithm::HS256),
-        )
-        .map_err(|error| Error::Unauthorized(error.to_string()))?;
+        ) {
+            Ok(data) => Ok(data.claims),
+            Err(error) => match error.kind() {
+                ErrorKind::ExpiredSignature => {
+                    Err(Error::Unauthorized("Token is expired".to_string()))
+                }
+                ErrorKind::InvalidSignature => {
+                    Err(Error::BadRequest("Token is not valid".to_string()))
+                }
+                _ => Err(Error::Internal(error.to_string())),
+            },
+        }
+    }
 
-        Ok(data.claims)
+    fn verify_refresh_token(&self, token: &str) -> Result<Claim, Error> {
+        match jsonwebtoken::decode::<Claim>(
+            &token,
+            &DecodingKey::from_secret(self.config.refresh_token_key_secret.as_ref()),
+            &Validation::new(Algorithm::HS256),
+        ) {
+            Ok(data) => Ok(data.claims),
+            Err(error) => match error.kind() {
+                ErrorKind::ExpiredSignature => {
+                    Err(Error::BadRequest("Token is expired".to_string()))
+                }
+                ErrorKind::InvalidSignature => {
+                    Err(Error::BadRequest("Token is not valid".to_string()))
+                }
+                _ => Err(Error::Internal(error.to_string())),
+            },
+        }
     }
 }

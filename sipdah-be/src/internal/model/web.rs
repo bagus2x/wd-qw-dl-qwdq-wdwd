@@ -21,6 +21,7 @@ impl PageRequest {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct PageResponse<T> {
     pub data: Vec<T>,
     pub next_cursor: Option<i64>,
