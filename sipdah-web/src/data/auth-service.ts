@@ -22,6 +22,10 @@ export const signIn = async (req: { email: string; password: string }): Promise<
   return res.data.data
 }
 
+export const signOut = async (): Promise<void> => {
+  await axios.delete<Api<AuthResponse>>('/api/v1/auth/signout')
+}
+
 export const refresh = async (): Promise<AuthResponse> => {
   const res = await axios.get<Api<AuthResponse>>('/api/v1/auth/refresh')
   return res.data.data

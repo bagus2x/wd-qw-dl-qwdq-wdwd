@@ -5,7 +5,7 @@ use crate::internal::common::uow;
 use crate::internal::router::auth::{refresh, sign_in, sign_out, sign_up, AuthState};
 use crate::internal::router::user::{get_by_id, get_current, UserState};
 use crate::internal::{middleware, repository, service};
-use axum::http::{header, Method};
+use axum::http::{header, HeaderValue, Method};
 use axum::middleware::from_fn_with_state;
 use axum::routing::{delete, get, post};
 use axum::Router;
@@ -87,15 +87,21 @@ async fn main() {
         .with_state(Arc::clone(&user_state))
         .with_state(Arc::clone(&auth_state));
 
+    let allowed_origins: Vec<HeaderValue> = config.cors_allowed_origins
+        .iter()
+        .map(|origin| HeaderValue::from_str(origin).unwrap())
+        .collect();
+
     let cors = CorsLayer::new()
         .allow_methods([
             Method::GET,
             Method::POST,
             Method::PATCH,
             Method::PUT,
+            Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_origin(["http://localhost:5173".parse().unwrap()])
+        .allow_origin(allowed_origins)
         .allow_headers([
             header::AUTHORIZATION,
             header::CONTENT_TYPE,

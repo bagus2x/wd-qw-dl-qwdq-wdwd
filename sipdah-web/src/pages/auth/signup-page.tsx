@@ -1,7 +1,11 @@
-import { SignUpForm } from '@/pages/auth/components/signup-form'
-import { createLazyRoute, HeadContent } from '@tanstack/react-router'
+import { createRoute, HeadContent } from '@tanstack/react-router'
 
-export const signUpLazyRoute = createLazyRoute('/signup')({
+import { SignUpForm } from '@/pages/auth/components/signup-form'
+import { rootRoute } from '@/router-config'
+
+export const signUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signup',
   component: () => (
     <>
       <HeadContent />
