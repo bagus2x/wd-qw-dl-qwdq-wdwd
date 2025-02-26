@@ -1,8 +1,20 @@
-import { Button } from '@/components/ui/button'
-import { useIsSignedIn, useSignOut } from '@/data/auth-hooks'
-import { useCurrentUser } from '@/data/user-hooks'
+import { About } from '@/pages/landing/components/about'
+import { Cta } from '@/pages/landing/components/cta'
+import { FAQ } from '@/pages/landing/components/faq'
+import { Features } from '@/pages/landing/components/features'
+import { Footer } from '@/pages/landing/components/footer'
+import { Hero } from '@/pages/landing/components/hero'
+import { HowItWorks } from '@/pages/landing/components/how-it-works'
+import { Navbar } from '@/pages/landing/components/navbar'
+import { Newsletter } from '@/pages/landing/components/news-letter'
+import { Pricing } from '@/pages/landing/components/pricing'
+import { ScrollToTop } from '@/pages/landing/components/scroll-to-top'
+import { Services } from '@/pages/landing/components/services'
+import { Sponsors } from '@/pages/landing/components/sponsors'
+import { Team } from '@/pages/landing/components/team'
+import { Testimonials } from '@/pages/landing/components/testimonials'
 import { rootRoute } from '@/router-config'
-import { createRoute, HeadContent, Link } from '@tanstack/react-router'
+import { createRoute, HeadContent } from '@tanstack/react-router'
 
 export const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -21,21 +33,23 @@ export const landingRoute = createRoute({
 })
 
 export function LandingPage() {
-  const user = useCurrentUser()
-  const signOut = useSignOut()
-  const isSignedIn = useIsSignedIn()
-
   return (
-    <main>
-      <pre>{isSignedIn ? 'Signed in' : 'Signed out'}</pre>
-      <pre>{JSON.stringify(user.data, null, 2)}</pre>
-      <Button asChild>
-        <Link to='/signin'>Sign in</Link>
-      </Button>
-      <Button asChild>
-        <Link to='/signup'>Sign up</Link>
-      </Button>
-      <Button onClick={() => signOut.mutate()}>Sign out</Button>
+    <main className='w-full flex flex-col items-center'>
+      <Navbar />
+      <Hero />
+      <Sponsors />
+      <About />
+      <HowItWorks />
+      <Features />
+      <Services />
+      <Cta />
+      <Testimonials />
+      <Team />
+      <Pricing />
+      <Newsletter />
+      <FAQ />
+      <Footer />
+      <ScrollToTop />
     </main>
   )
 }

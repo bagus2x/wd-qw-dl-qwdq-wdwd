@@ -7,6 +7,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/query'
 import { signInRoute } from '@/pages/auth/signin-page'
 import { signUpRoute } from '@/pages/auth/signup-page'
+import { profileRoute } from '@/pages/profile/profile-page'
 
 export const rootRoute = createRootRoute({
   head: () => {
@@ -29,7 +30,7 @@ export const rootRoute = createRootRoute({
   ),
 })
 
-const routeTree = rootRoute.addChildren([landingRoute, signInRoute, signUpRoute])
+const routeTree = rootRoute.addChildren([landingRoute, signInRoute, signUpRoute, profileRoute])
 
 export const router = createRouter({
   routeTree,

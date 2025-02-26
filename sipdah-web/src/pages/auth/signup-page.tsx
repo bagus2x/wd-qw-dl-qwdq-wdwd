@@ -16,7 +16,7 @@ export const signUpRoute = createRoute({
 
 export function SignUpPage() {
   return (
-    <main className='mx-auto p-4 w-full flex justify-center'>
+    <main className='mx-auto p-4 md:py-16 w-full flex justify-center'>
       <SignUpForm className='max-w-96 w-full' />
     </main>
   )

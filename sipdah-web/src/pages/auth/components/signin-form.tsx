@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IconBrandGoogleFilled, IconLoader } from '@tabler/icons-react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -37,6 +37,7 @@ export function SignInForm({ className, ...props }: SignInFormProps) {
     },
   })
   const signIn = useSignIn()
+  const router = useRouter()
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     signIn.mutate(values, {
@@ -45,6 +46,7 @@ export function SignInForm({ className, ...props }: SignInFormProps) {
           richColors: true,
           position: 'top-center',
         })
+        router.navigate({ to: '/profile', replace: true })
       },
       onError: (err) => {
         if (isAxiosError<Api>(err)) {
