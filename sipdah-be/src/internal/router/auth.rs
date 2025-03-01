@@ -140,7 +140,37 @@ pub async fn refresh<T1: auth::Service>(
             )
                 .into_response()
         }
-        Err(error) => json_error::<String>(error).into_response(),
+        Err(error) => {
+            let refresh_token = Cookie::build(("refresh_token", ""))
+                .http_only(true)
+                .same_site(SameSite::None)
+                .max_age(Duration::seconds(0))
+                .path("/")
+                .build();
+            let access_token = Cookie::build(("access_token", ""))
+                .http_only(true)
+                .same_site(SameSite::None)
+                .max_age(Duration::seconds(0))
+                .path("/")
+                .build();
+            let is_signed_in = Cookie::build(("is_signed_in", ""))
+                .http_only(true)
+                .same_site(SameSite::None)
+                .max_age(Duration::seconds(0))
+                .path("/")
+                .build();
+
+            let jar = jar
+                .remove(refresh_token)
+                .add(access_token)
+                .add(is_signed_in);
+
+            (
+                jar,
+                json_success(200, (), "Signed out successfully".to_string()),
+            )
+                .into_response()
+        },
     }
 }
 
