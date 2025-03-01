@@ -82,4 +82,15 @@ impl model::user::Repository for Repository {
 
         Ok(exists.0)
     }
+
+    async fn exists_by_id(&self, id: &str) -> Result<bool, Error> {
+        let sql = r#"
+            SELECT EXISTS(SELECT 1 FROM user WHERE id = UUID_TO_BIN(?))
+        "#;
+
+        let query = sqlx::query_as(sql).bind(id);
+        let exists: (bool,) = uow::fetch_one(query, &*self.pool).await?;
+
+        Ok(exists.0)
+    }
 }

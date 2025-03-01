@@ -15,5 +15,5 @@ pub fn get_current_identity() -> Result<Identity, Error> {
     IDENTITY
         .try_with(|identity| identity.clone())
         // Authorization must be handle in router
-        .map_err(|_| Error::Internal("Failed to retrieve current identity".to_string()))
+        .map_err(|_| Error::Forbidden("Failed to retrieve current identity".to_string()))
 }

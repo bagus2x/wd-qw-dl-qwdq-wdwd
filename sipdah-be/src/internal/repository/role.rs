@@ -36,11 +36,11 @@ impl model::role::Repository for Repository {
 
     async fn find_by_id(&self, role_id: &str) -> Result<Option<Role>, Error> {
         let sql = r#"
-            SELECT 
+            SELECT
                 BIN_TO_UUID(id) as id, name, created_at, updated_at, deleted_at
-            FROM 
+            FROM
                 role
-            WHERE 
+            WHERE
                 id = UUID_TO_BIN(?)
         "#;
 
@@ -48,6 +48,10 @@ impl model::role::Repository for Repository {
         let role = uow::fetch_one_as(query, &*self.pool).await?;
 
         Ok(role)
+    }
+
+    async fn find_all(&self) -> Result<Vec<Role>, Error> {
+        todo!()
     }
 
     async fn find_by_name(&self, name: &str) -> Result<Option<Role>, Error> {

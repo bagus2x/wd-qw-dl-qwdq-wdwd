@@ -3,6 +3,7 @@ import { createRoute, HeadContent, useRouter } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useSignOut } from '@/data/auth-hooks'
 import { rootRoute } from '@/router-config'
+import { useCurrentUser } from '@/data/user-hooks'
 
 export const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -23,6 +24,7 @@ export const profileRoute = createRoute({
 export function ProfilePage() {
   const signOut = useSignOut()
   const router = useRouter()
+  const user = useCurrentUser()
 
   const handleSignout = () => {
     signOut.mutate(undefined, {
@@ -34,7 +36,7 @@ export function ProfilePage() {
 
   return (
     <main className='w-full flex flex-col items-center'>
-      Profile page
+      <pre>{JSON.stringify(user.data, null, 2)}</pre>
       <Button onClick={handleSignout}>Sign out</Button>
     </main>
   )

@@ -53,7 +53,7 @@ pub async fn sign_up<T1: auth::Service>(
             )
                 .into_response()
         }
-        Err(error) => json_error::<String>(error).into_response(),
+        Err(err) => json_error::<String>(err).into_response(),
     }
 }
 
@@ -91,7 +91,7 @@ pub async fn sign_in<T1: auth::Service>(
             )
                 .into_response()
         }
-        Err(error) => json_error::<String>(error).into_response(),
+        Err(err) => json_error::<String>(err).into_response(),
     }
 }
 
@@ -144,34 +144,42 @@ pub async fn refresh<T1: auth::Service>(
     }
 }
 
-pub async fn sign_out(jar: CookieJar) -> impl IntoResponse + Send {
-    let refresh_token = Cookie::build(("refresh_token", ""))
-        .http_only(true)
-        .same_site(SameSite::None)
-        .max_age(Duration::seconds(0))
-        .path("/")
-        .build();
-    let access_token = Cookie::build(("access_token", ""))
-        .http_only(true)
-        .same_site(SameSite::None)
-        .max_age(Duration::seconds(0))
-        .path("/")
-        .build();
-    let is_signed_in = Cookie::build(("is_signed_in", ""))
-        .http_only(true)
-        .same_site(SameSite::None)
-        .max_age(Duration::seconds(0))
-        .path("/")
-        .build();
+pub async fn sign_out<T1: auth::Service>(
+    jar: CookieJar,
+    State(state): State<Arc<AuthState<T1>>>,
+) -> impl IntoResponse + Send {
+    match state.auth_service.sign_out().await {
+        Ok(_) => {
+            let refresh_token = Cookie::build(("refresh_token", ""))
+                .http_only(true)
+                .same_site(SameSite::None)
+                .max_age(Duration::seconds(0))
+                .path("/")
+                .build();
+            let access_token = Cookie::build(("access_token", ""))
+                .http_only(true)
+                .same_site(SameSite::None)
+                .max_age(Duration::seconds(0))
+                .path("/")
+                .build();
+            let is_signed_in = Cookie::build(("is_signed_in", ""))
+                .http_only(true)
+                .same_site(SameSite::None)
+                .max_age(Duration::seconds(0))
+                .path("/")
+                .build();
 
-    let jar = jar
-        .remove(refresh_token)
-        .add(access_token)
-        .add(is_signed_in);
+            let jar = jar
+                .remove(refresh_token)
+                .add(access_token)
+                .add(is_signed_in);
 
-    (
-        jar,
-        json_success(200, (), "Signed out successfully".to_string()),
-    )
-        .into_response()
+            (
+                jar,
+                json_success(200, (), "Signed out successfully".to_string()),
+            )
+                .into_response()
+        }
+        Err(err) => json_error::<String>(err).into_response(),
+    }
 }

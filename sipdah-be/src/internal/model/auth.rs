@@ -16,7 +16,7 @@ pub trait Service {
     fn verify_refresh_token(&self, token: &str) -> Result<Claim, Error>;
 }
 
-#[derive(Validate, Serialize, Deserialize)]
+#[derive(Validate, Deserialize)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct SignInRequest {
     #[validate(
@@ -36,7 +36,7 @@ pub struct SignInRequest {
     pub password: String,
 }
 
-#[derive(Validate, Serialize, Deserialize)]
+#[derive(Validate, Deserialize)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct SignUpRequest {
     #[validate(length(
@@ -62,14 +62,14 @@ pub struct SignUpRequest {
     pub password: String,
 }
 
-#[derive(Validate, Serialize, Deserialize)]
+#[derive(Validate, Deserialize)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct RefreshTokenRequest {
     #[validate(length(min = 1, message = "Token is required"))]
     pub refresh_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct AuthResponse {
     pub user_id: String,

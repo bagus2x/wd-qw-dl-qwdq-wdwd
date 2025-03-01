@@ -4,18 +4,19 @@ use crate::internal::common::uow::Uow;
 use crate::internal::model::auth::{
     AuthResponse, Claim, RefreshTokenRequest, Service as AuthService, SignInRequest, SignUpRequest,
 };
-use crate::internal::model::cache::Repository as CacheRepository;
 use crate::internal::model::error::Error;
+use crate::internal::model::identity::get_current_identity;
 use crate::internal::model::role::{Repository as RoleRepository, ROLE_USER};
 use crate::internal::model::user::{Repository as UserRepository, User};
+use crate::internal::provider::cache::Cache as CacheProvider;
 use chrono::Local;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use std::ops::Add;
 use std::sync::Arc;
+use tracing::info;
 use uow_macro::uow;
 use validator::Validate;
-use crate::internal::model::identity::get_current_identity;
 
 #[derive(Clone)]
 pub struct Service<T1, T2, T3, T4>
@@ -23,7 +24,7 @@ where
     T1: Uow,
     T2: UserRepository,
     T3: RoleRepository,
-    T4: CacheRepository,
+    T4: CacheProvider,
 {
     config: Arc<Config>,
     uow: Arc<T1>,
@@ -37,7 +38,7 @@ where
     T1: Uow,
     T2: UserRepository,
     T3: RoleRepository,
-    T4: CacheRepository,
+    T4: CacheProvider,
 {
     pub fn new(
         config: Arc<Config>,
@@ -117,7 +118,7 @@ where
     T1: Uow + Send + Sync,
     T2: UserRepository + Send + Sync,
     T3: RoleRepository + Send + Sync,
-    T4: CacheRepository + Send + Sync,
+    T4: CacheProvider + Send + Sync,
 {
     async fn sign_in(&self, req: &SignInRequest) -> Result<AuthResponse, Error> {
         req.validate()
@@ -147,7 +148,7 @@ where
 
         let is_present = self.user_repo.exists_by_email(&req.email).await?;
         if is_present {
-            return Err(Error::BadRequest(format!(
+            return Err(Error::Conflict(format!(
                 "Email {} already exists",
                 req.email
             )));
@@ -184,7 +185,9 @@ where
     async fn sign_out(&self) -> Result<(), Error> {
         let identity = get_current_identity()?;
         let key = format!("auth:refresh-token:{}", identity.user_id);
-     
+
+        info!("Signout for user {}", identity.email);
+
         self.cache_repo.del(key).await
     }
 

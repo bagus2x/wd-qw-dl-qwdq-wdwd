@@ -6,7 +6,7 @@ CREATE TABLE user
     password     VARCHAR(255) NOT NULL,
     name         VARCHAR(255) NOT NULL,
     phone_number VARCHAR(20)  NULL,
-    photo_url    VARCHAR(255) NULL,
+    photo_id     BINARY(16)   NULL,
     created_at   DATETIME     NOT NULL,
     updated_at   DATETIME     NOT NULL,
     deleted_at   DATETIME     NULL

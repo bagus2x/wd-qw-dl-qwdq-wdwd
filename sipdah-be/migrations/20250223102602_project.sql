@@ -5,7 +5,7 @@ CREATE TABLE project
     author_id  BINARY(16)   NOT NULL,
     name       VARCHAR(255) NOT NULL,
     status     VARCHAR(36)  NOT NULL,
-    logo_url   VARCHAR(255) NULL,
+    logo_id    BINARY(16)   NULL,
     created_at DATETIME     NOT NULL,
     updated_at DATETIME     NOT NULL,
     deleted_at DATETIME     NULL

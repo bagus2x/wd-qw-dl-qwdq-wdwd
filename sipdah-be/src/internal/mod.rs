@@ -4,3 +4,4 @@ pub mod repository;
 pub mod service;
 pub mod router;
 pub mod middleware;
+pub mod provider;

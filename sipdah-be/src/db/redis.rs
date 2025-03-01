@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::internal::model::error::Error;
 use crate::internal::model::error::Error::Internal;
-use deadpool_redis::{Config as RedisConfig, Connection, Pool, PoolError, Runtime};
+use deadpool_redis::{Config as RedisConfig, Pool, Runtime};
 use std::sync::Arc;
 
 pub struct Database {
@@ -16,9 +16,5 @@ impl Database {
             .map_err(|err| Internal(err.to_string()))?;
 
         Ok(Self { pool })
-    }
-
-    pub async fn get_connection(&self) -> Result<Connection, PoolError> {
-        self.pool.get().await
     }
 }
